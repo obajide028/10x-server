@@ -18,6 +18,12 @@ const searchSchema = Joi.object({
 
 // Create a course
 exports.createCourse = asyncHandler(async (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super admin") {
+    return res.status(401).json({
+      success: false,
+      message: `User ${req.user.id} is not authorized to add course`,
+    });
+  }
   const { error, value } = courseSchema.validate(req.body);
   if (error) {
     return res
@@ -25,11 +31,19 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
       .json({ success: false, error: error.details[0].message });
   }
 
-  if (typeof value.thumbnail === "object") {
-    value.thumbnail = await uploadImage(value.thumbnail);
+  // Handle thumbnail upload
+  let thumbnailUrl;
+  if (req.files && req.files.thumbnail) {
+    thumbnailUrl = await uploadImage(req.files.thumbnail.tempFilePath);
+  } else {
+    return res.status(400).json({ error: "Thumbnail file not provided" });
   }
 
-  const course = await CourseModel.create(value);
+  const course = await CourseModel.create({
+    ...value,
+    thumbnail: thumbnailUrl,
+  });
+
   res.status(201).json({ success: true, data: course });
 });
 
@@ -50,15 +64,29 @@ exports.getCourse = asyncHandler(async (req, res, next) => {
 
 // Update a course
 exports.updateCourse = asyncHandler(async (req, res, next) => {
-  const { error, value } = courseSchema.validate(req.body);
-  if (error) {
-    return res
-      .status(400)
-      .json({ success: false, error: error.details[0].message });
+  if (req.user.role !== "admin" && req.user.role !== "super admin") {
+    return res.status(401).json({
+      success: false,
+      message: `User ${req.user.id} is not authorized to update a course`,
+    });
   }
 
-  if (typeof value.thumbnail === "object") {
-    value.thumbnail = await uploadImage(value.thumbnail);
+  const { error, value } = courseSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ success: false, error: error.details[0].message });
+  }
+
+  // Find the existing course to retain existing thumbnail if no new one is provided
+  const existingCourse = await CourseModel.findById(req.params.id);
+  if (!existingCourse) {
+    return res.status(404).json({ success: false, error: 'Course not found' });
+  }
+
+  // Handle thumbnail upload if a new thumbnail is provided
+  if (req.files && req.files.thumbnail) {
+    value.thumbnail = await uploadImage(req.files.thumbnail.tempFilePath);
+  } else {
+    value.thumbnail = existingCourse.thumbnail; // Retain the existing thumbnail
   }
 
   const course = await CourseModel.findByIdAndUpdate(req.params.id, value, {
@@ -66,15 +94,19 @@ exports.updateCourse = asyncHandler(async (req, res, next) => {
     runValidators: true,
   });
 
-  if (!course) {
-    return res.status(404).json({ success: false, error: "Course not found" });
-  }
-
   res.status(200).json({ success: true, data: course });
 });
 
+
 // Delete a course
 exports.deleteCourse = asyncHandler(async (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super admin") {
+    return res.status(401).json({
+      success: false,
+      message: `User ${req.user.id} is not authorized to delete a course`,
+    });
+  }
+
   const course = await CourseModel.findByIdAndDelete(req.params.id);
   if (!course) {
     return res.status(404).json({ success: false, error: "Course not found" });

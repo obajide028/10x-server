@@ -3,9 +3,8 @@
         margin: 0;
         font-family: Arial, sans-serif;
         background-color: #f6f9fc;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        display: grid;
+        place-items: center;
         height: 100vh;
       "
 >
@@ -69,22 +68,23 @@
       <h3 style="color: #333; font-size: 16px; margin: 20px 0 10px">
         Attachment
       </h3>
-      <div style="display: flex; align-items: center">
+      <div
+        style="
+              display: grid;
+              grid-template-columns: auto 1fr;
+              align-items: center;
+            "
+      >
+        <img
+          src="https://res.cloudinary.com/dgde8cwjk/image/upload/v1716888721/icon__application_pdf__nimqgg.png"
+          alt="PDF Icon"
+          style="width: 15px; margin-right: 10px"
+        />
         <a
           href="https://res.cloudinary.com/dgde8cwjk/image/authenticated/s--1Dt85nGt--/v1716567244/qkbhvywqaicodblai1lf.pdf"
           target="_blank"
-        >
-          <img
-            src="https://res.cloudinary.com/dgde8cwjk/image/upload/v1716888721/icon__application_pdf__nimqgg.png"
-            alt="PDF Icon"
-            style="width: 15px; margin-right: 10px"
-          />
-          <a
-            href="https://res.cloudinary.com/dgde8cwjk/image/authenticated/s--1Dt85nGt--/v1716567244/qkbhvywqaicodblai1lf.pdf"
-            style="color: black; font-size: 14px; text-decoration: none"
-            target="_blank"
-          >Zero to N100M Sales Course</a>
-        </a>
+          style="color: black; font-size: 14px; text-decoration: none"
+        >Zero to N100M Sales Course</a>
       </div>
     </div>
   </div>
