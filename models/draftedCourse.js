@@ -21,6 +21,10 @@ const draftCourseSchema = new mongoose.Schema(
       enum: ["video", "book"],
       required: [true, "Please add a category"],
     },
+    url: {
+      type: String,
+      required: [true, "Please add a valid URL"],
+    },
     thumbnail: {
       type: String,
       required: [true, "Add an image"],
@@ -28,9 +32,9 @@ const draftCourseSchema = new mongoose.Schema(
     },
     status: {
       type: String,
+      enum: ["draft", "published"],
       default: "draft",
     },
-    content: [{ type: mongoose.Schema.Types.ObjectId, ref: "Content" }],
   },
   { timestamps: true }
 );

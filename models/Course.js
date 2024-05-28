@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 // Define Course Schema
 const courseSchema = new mongoose.Schema(
   {
@@ -22,6 +21,10 @@ const courseSchema = new mongoose.Schema(
       enum: ["video", "book"],
       required: [true, "Please add a category"],
     },
+    url: {
+      type: String,
+      required: [true, "Please add a valid URL"],
+    },
     thumbnail: {
       type: String,
       required: [true, "Add an image"],
@@ -32,7 +35,6 @@ const courseSchema = new mongoose.Schema(
       enum: ["draft", "published"],
       default: "published",
     },
-    content: [{ type: mongoose.Schema.Types.ObjectId, ref: "Content" }],
   },
   { timestamps: true }
 );

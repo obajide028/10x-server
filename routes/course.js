@@ -1,10 +1,9 @@
 const express = require("express");
 const router = express.Router();
-// const upload = require("../middleware/multer");
 const courseController = require("../controllers/courses");
 const { authorize, protect } = require("../middleware/auth");
 
-// Route for creating a course with content
+// Create a course
 router.post(
   "/",
   protect,
@@ -12,41 +11,27 @@ router.post(
   courseController.createCourse
 );
 
-// Route for editing a course
+// Update a course
 router.put(
   "/:id",
   protect,
   authorize("admin", "super admin"),
-  courseController.editCourse
+  courseController.updateCourse
 );
-
-// Route for deleting a course
+// Delete a course
 router.delete(
   "/:id",
   protect,
   authorize("admin", "super admin"),
   courseController.deleteCourse
 );
+// Get all courses
+router.get("/", courseController.getCourses);
 
-// Route for getting top 4 best-selling courses
-router.get(
-  "/top-selling",
-  protect,
-  authorize("admin", "super admin"),
-  courseController.getTopSellingCourses
-);
+// Get a single course
+router.get("/:id", courseController.getCourse);
 
-// Route for getting all courses
-router.get("/recentCourse", courseController.getRecentlyUploadedCourses);
-
-router.get("/", courseController.getAllCourses);
-
-// Route for getting a single course by ID with its content
-router.get("/:id", courseController.getCourseById);
-
-// Route for searching for courses
-router.get("/search/:keyword", courseController.searchCourse);
-
-//Route for getting recently uploaded courses
+// Search courses dynamically by keyword
+router.get("/search/:keyword", courseController.searchCourses);
 
 module.exports = router;
