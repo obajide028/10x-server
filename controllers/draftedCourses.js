@@ -18,6 +18,12 @@ const searchSchema = Joi.object({
 
 // Create a drafted course
 exports.createDraftedCourse = asyncHandler(async (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super admin") {
+    return res.status(401).json({
+      success: false,
+      message: `User ${req.user.id} is not authorized to add course`,
+    });
+  }
   const { error, value } = courseSchema.validate(req.body);
   if (error) {
     return res
@@ -52,6 +58,12 @@ exports.getDraftedCourse = asyncHandler(async (req, res, next) => {
 
 // Update a drafted course
 exports.updateDraftedCourse = asyncHandler(async (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super admin") {
+    return res.status(401).json({
+      success: false,
+      message: `User ${req.user.id} is not authorized to add course`,
+    });
+  }
   const { error, value } = courseSchema.validate(req.body);
   if (error) {
     return res
@@ -83,6 +95,12 @@ exports.updateDraftedCourse = asyncHandler(async (req, res, next) => {
 
 // Delete a drafted course
 exports.deleteDraftedCourse = asyncHandler(async (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super admin") {
+    return res.status(401).json({
+      success: false,
+      message: `User ${req.user.id} is not authorized to add course`,
+    });
+  }
   const draftedCourse = await DraftedCourseModel.findByIdAndDelete(
     req.params.id
   );
