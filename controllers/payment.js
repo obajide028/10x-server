@@ -3,6 +3,7 @@ const PaymentDetails = require("../models/Payment");
 const asyncHandler = require("../middleware/async");
 const { CourseModel } = require("../models/Course");
 const { welcomeMail } = require("../utils/mailing");
+const {initializePayment} = require('../services/paystack');
 
 //verify transaction using webhook
 const verifyWebhookEvent = asyncHandler(async (req, res) => {
@@ -29,34 +30,73 @@ const verifyWebhookEvent = asyncHandler(async (req, res) => {
         }
       );
 
-      // Find the user by email
-      const user = await User.findOne({ email: customerEmail });
-      if (user) {
+         // Find the user by email
+    const user = await User.findOne({ email: customerEmail });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
         // Find the course by id
         const payment = await PaymentDetails.findOne({ email: customerEmail });
-
+       // Find the course by ID
         const course = await CourseModel.findById(payment.courseId);
-        console.log(course);
-        if (course) {
-          // Associate the course with the user
-          await user.purchasedCourses.push(course._id);
-          await user.save();
+        console.log(payment.courseId)
+        if (!course) {
+          return res.status(404).json({ message: "Course not found" });
         }
-      }
 
-      // Find the course by id
-      const payment = await PaymentDetails.findOne({ email: customerEmail });
+    // Associate the course with the user
+    if (!user.purchasedCourses.includes(course._id)) {
+     await user.purchasedCourses.push(course._id);
+      await user.save();
+    }
 
-      // Prepare email template data
-      const templateData = {
-        fullname: payment.fullname,
-        email: customerEmail,
-      };
+     // Check if the user is new
+     const isNewUser = user.isNewUser;
 
-      await welcomeMail({
-        fullname: templateData.fullname,
-        email: templateData.email,
-      });
+     // Send welcome email only if it's the first purchase
+     if (isNewUser) {
+       const templateData = {
+         fullname: payment.fullname,
+         email: customerEmail,
+       };
+ 
+       await welcomeMail({
+         fullname: templateData.fullname,
+         email: templateData.email,
+       });
+ 
+       // Set isNewUser to false after sending the welcome email
+       user.isNewUser = false;
+       await user.save();
+     }
+      // Find the user by email
+      // const user = await User.findOne({ email: customerEmail });
+      // if (user) {
+      //   // Find the course by id
+      //   const payment = await PaymentDetails.findOne({ email: customerEmail });
+
+      //   const course = await CourseModel.findById(payment.courseId);
+      //   console.log(course);
+        // if (course) {
+        //   // Associate the course with the user
+        //   await user.purchasedCourses.push(course._id);
+        //   await user.save();
+        // }
+      // }
+
+      // // Find the course by id
+      // const payment = await PaymentDetails.findOne({ email: customerEmail });
+
+      // // Prepare email template data
+      // const templateData = {
+      //   fullname: payment.fullname,
+      //   email: customerEmail,
+      // };
+
+      // await welcomeMail({
+      //   fullname: templateData.fullname,
+      //   email: templateData.email,
+      // });
 
       res.status(200).json({ message: "webhook!!!!", customerReference });
     }
@@ -196,32 +236,48 @@ const getCoursesPaymentStats = asyncHandler(async (req, res, next) => {
   }
 });
 
-module.exports = { verifyWebhookEvent, getCourseUsers, getCoursesPaymentStats };
+const purchaseCourse = asyncHandler(async (req, res, next) => {
+  //  const {userId, courseId} = req.body;
+  const courseId = req.body.courseId;
+  const userId = req.body.userId;
+  const amount = req.body.amount;
+  const email = req.body.email;
 
-// async function handleSuccessfulTransaction(data) {
-//     const customerReference = data.reference;
-//     const fieldsToUpdate = { status: "success" };
+  //find the user and the course
+  const user = await User.findById(userId);
+  console.log(user);
+  const course = await CourseModel.findById(courseId);
+  console.log(course);
 
-//     // Update payment status
-//     await PaymentDetails.findOneAndUpdate({ reference: customerReference }, fieldsToUpdate, {
-//         new: true,
-//         runValidators: true,
-//     });
-// }
+  // check if the user already purchased the course
+  if (user.purchasedCourses && user.purchasedCourses.includes(courseId)) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "You have already purchased this course",
+      });
+  }
 
-// async function handleFailedTransaction(data) {
-//     const customerEmail = data.customer.email;
-//     const customerReference = data.reference;
+  const paymentData = await initializePayment(req);
 
-//     // Attempt to find and remove user details
-//     const userDetails = await User.findOne({ email: customerEmail });
-//     if (userDetails) {
-//         await userDetails.remove();
-//     }
+  // Create a new payment record with pending status
+  const payment = await PaymentDetails.create({
+    user: userId,
+    amount,
+    courseId,
+    fullname: user.fullname,
+    email,
+    reference: paymentData.data.reference,
+    status: "pending",
+  });
 
-//     // Attempt to find and remove payment details
-//     const paymentDetails = await PaymentDetails.findOne({ reference: customerReference });
-//     if (paymentDetails) {
-//         await paymentDetails.remove();
-//     }
-// }
+  // Send the payment data as a response
+  res.status(200).json({
+    success: true,
+    data: paymentData,
+  });
+});
+
+module.exports = { verifyWebhookEvent, getCourseUsers, getCoursesPaymentStats, purchaseCourse };
+

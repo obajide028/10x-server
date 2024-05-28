@@ -1,5 +1,4 @@
 const { DraftedCourseModel } = require("../models/draftedCourse");
-const { ContentModel } = require("../models/Content");
 const Joi = require("joi");
 const uploadImage = require("../utils/uploadImage");
 const uploadVideo = require("../utils/uploadVideo");
