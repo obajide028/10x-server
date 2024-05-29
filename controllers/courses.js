@@ -8,7 +8,7 @@ const courseSchema = Joi.object({
   description: Joi.string().required(),
   price: Joi.number().required(),
   category: Joi.string().valid("video", "book").required(),
-  url: Joi.string().required(),
+  url: Joi.string(),
   thumbnail: Joi.alternatives().try(Joi.string(), Joi.object()),
 });
 
@@ -49,20 +49,24 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
 
 // Get all courses
 exports.getCourses = asyncHandler(async (req, res, next) => {
-  const courses = await CourseModel.find();
+  const courses = await CourseModel.find({ status: "published" });
   res.status(200).json({ success: true, data: courses });
 });
 
 // Get a single course
 exports.getCourse = asyncHandler(async (req, res, next) => {
-  const course = await CourseModel.findById(req.params.id);
+  const course = await CourseModel.findById({
+    _id: req.params.id,
+    status: "published",
+  });
   if (!course) {
-    return res.status(404).json({ success: false, error: "Course not found" });
+    return res
+      .status(404)
+      .json({ success: false, error: "Course not found or not published" });
   }
   res.status(200).json({ success: true, data: course });
 });
 
-// Update a course
 exports.updateCourse = asyncHandler(async (req, res, next) => {
   if (req.user.role !== "admin" && req.user.role !== "super admin") {
     return res.status(401).json({
@@ -71,32 +75,51 @@ exports.updateCourse = asyncHandler(async (req, res, next) => {
     });
   }
 
-  const { error, value } = courseSchema.validate(req.body);
-  if (error) {
-    return res.status(400).json({ success: false, error: error.details[0].message });
-  }
-
-  // Find the existing course to retain existing thumbnail if no new one is provided
+  // Find the existing course to retain existing data if no new data is provided
   const existingCourse = await CourseModel.findById(req.params.id);
   if (!existingCourse) {
-    return res.status(404).json({ success: false, error: 'Course not found' });
+    return res.status(404).json({ success: false, error: "Course not found" });
+  }
+
+  // Validate the input data
+  const { error, value } = courseSchema.validate(req.body, {
+    allowUnknown: true,
+    stripUnknown: true,
+  });
+  if (error) {
+    return res
+      .status(400)
+      .json({ success: false, error: error.details[0].message });
   }
 
   // Handle thumbnail upload if a new thumbnail is provided
   if (req.files && req.files.thumbnail) {
     value.thumbnail = await uploadImage(req.files.thumbnail.tempFilePath);
-  } else {
-    value.thumbnail = existingCourse.thumbnail; // Retain the existing thumbnail
   }
 
-  const course = await CourseModel.findByIdAndUpdate(req.params.id, value, {
-    new: true,
-    runValidators: true,
-  });
+  // Merge existing course data with the new data
+  const updatedCourseData = {
+    ...existingCourse._doc,
+    title: value.title || existingCourse.title,
+    description: value.description || existingCourse.description,
+    price: value.price || existingCourse.price,
+    category: value.category || existingCourse.category,
+    thumbnail: value.thumbnail || existingCourse.thumbnail, // retain existing thumbnail if not provided
+    url: value.url || existingCourse.url, // retain existing url if not provided
+  };
+
+  // Update the course with the merged data
+  const course = await CourseModel.findByIdAndUpdate(
+    req.params.id,
+    updatedCourseData,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({ success: true, data: course });
 });
-
 
 // Delete a course
 exports.deleteCourse = asyncHandler(async (req, res, next) => {
@@ -111,7 +134,11 @@ exports.deleteCourse = asyncHandler(async (req, res, next) => {
   if (!course) {
     return res.status(404).json({ success: false, error: "Course not found" });
   }
-  res.status(200).json({ success: true, data: {} });
+  res.status(200).json({
+    success: true,
+    data: {},
+    message: "This course has been deleted successsfully",
+  });
 });
 
 // Search courses dynamically by keyword

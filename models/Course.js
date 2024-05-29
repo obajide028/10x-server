@@ -23,7 +23,7 @@ const courseSchema = new mongoose.Schema(
     },
     url: {
       type: String,
-      required: [true, "Please add a valid URL"],
+      required: [false, "Please add a valid URL"],
     },
     thumbnail: {
       type: String,
@@ -32,7 +32,7 @@ const courseSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "published"],
+      enum: ["drafted", "published"],
       default: "published",
     },
   },
