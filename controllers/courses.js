@@ -49,22 +49,7 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
 
 // Get all courses
 exports.getCourses = asyncHandler(async (req, res, next) => {
-  const userId = req.user._id; // Assuming user ID is available in the request
   const courses = await CourseModel.find({ status: "published" });
-
-  // Check if each course has been purchased by the user
-  const user = await User.findById(userId).lean();
-  if (user) {
-    const purchasedCourses = user.purchasedCourses.map((course) =>
-      course.toString()
-    );
-    courses.forEach((course) => {
-      if (purchasedCourses.includes(course._id.toString())) {
-        course.price = "Purchased";
-      }
-    });
-  }
-
   res.status(200).json({ success: true, data: courses });
 });
 
