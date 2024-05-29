@@ -49,8 +49,28 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
 
 // Get all courses
 exports.getCourses = asyncHandler(async (req, res, next) => {
+  const userId = req.user._id; // Get the user ID from the authenticated user
+
+  // Find all published courses
   const courses = await CourseModel.find({ status: "published" });
-  res.status(200).json({ success: true, data: courses });
+
+  // Fetch the user's purchased courses
+  const user = await User.findById(userId).populate("purchasedCourses");
+
+  // Create a new array with course data and purchase status
+  const coursesWithPurchaseStatus = courses.map((course) => {
+    const isPurchased = user.purchasedCourses.some(
+      (purchasedCourse) =>
+        purchasedCourse._id.toString() === course._id.toString()
+    );
+
+    return {
+      ...course.toObject(),
+      isPurchased,
+    };
+  });
+
+  res.status(200).json({ success: true, data: coursesWithPurchaseStatus });
 });
 
 // Get a single course
