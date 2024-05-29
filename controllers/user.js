@@ -45,15 +45,7 @@ const getUserWithPurchasedCourse = asyncHandler(async(req, res, next) => {
 
    try{
 
-      const user = await User.findById(userId)
-      .populate({
-         path: 'purchasedCourses',
-         populate: {
-            path: 'content',
-            model: 'Content',
-         },
-      })
-      .lean();
+      const user = await User.findById(userId).populate('purchasedCourses');
 
       if(!user){
          return res.status(404).json({success: false, message: `The User not found with id ${userId}`})
@@ -62,7 +54,7 @@ const getUserWithPurchasedCourse = asyncHandler(async(req, res, next) => {
       res.status(200).json({success: true, data: user});
 
    }catch(error){
-     next(err);
+     next(error);
    }
 })
 
