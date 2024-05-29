@@ -49,21 +49,23 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
 
 // Get all courses
 exports.getCourses = asyncHandler(async (req, res, next) => {
-  const userId = req.user._id; // Get the user ID from the authenticated user
+  const userId = req.user ? req.user._id : null; // Get the user ID if the user is authenticated, otherwise null
 
   // Find all published courses
   const courses = await CourseModel.find({ status: "published" });
 
-  // Fetch the user's purchased courses
-  const user = await User.findById(userId).populate("purchasedCourses");
-
-  // Create a new array with course data and purchase status
-  const coursesWithPurchaseStatus = courses.map((course) => {
-    const isPurchased = user.purchasedCourses.some(
-      (purchasedCourse) =>
-        purchasedCourse._id.toString() === course._id.toString()
+  // If the user is authenticated, fetch their purchased courses
+  let purchasedCourseIds = [];
+  if (userId) {
+    const user = await User.findById(userId).populate("purchasedCourses");
+    purchasedCourseIds = user.purchasedCourses.map((course) =>
+      course._id.toString()
     );
+  }
 
+  // Map over the courses and add the "isPurchased" property
+  const coursesWithPurchaseStatus = courses.map((course) => {
+    const isPurchased = purchasedCourseIds.includes(course._id.toString());
     return {
       ...course.toObject(),
       isPurchased,
@@ -71,20 +73,6 @@ exports.getCourses = asyncHandler(async (req, res, next) => {
   });
 
   res.status(200).json({ success: true, data: coursesWithPurchaseStatus });
-});
-
-// Get a single course
-exports.getCourse = asyncHandler(async (req, res, next) => {
-  const course = await CourseModel.findById({
-    _id: req.params.id,
-    status: "published",
-  });
-  if (!course) {
-    return res
-      .status(404)
-      .json({ success: false, error: "Course not found or not published" });
-  }
-  res.status(200).json({ success: true, data: course });
 });
 
 exports.updateCourse = asyncHandler(async (req, res, next) => {
