@@ -2,7 +2,7 @@ const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const Subscriber = require('../models/Subscribers');
 // const sendEmail = require('../utils/sendEmail');
-const {mailSubscription} = require('../utils/mailing');
+const {mailSubscription, mailFreeAccess} = require('../utils/mailing');
 
 
 //@desc     create subscribers
@@ -90,6 +90,35 @@ const sendMailToSubscribers = asyncHandler(async (req, res, next) => {
 });
 
 
+const sendEmailToUser = asyncHandler(async(req, res, next) => {
+  const { email } = req.body ;
+
+  // Validate Email Address
+  if(!email){
+      return res.status(400).json({ error: 'Email address is required'});
+  }
+
+  // Check if email address already exist
+  const existingSubscription = await Subscriber.findOne({email});
+  if(existingSubscription){
+      return res.status(400).json({error: 'Email address is already subscribed'});;
+  }
+
+  // Create a new subscriber
+  const newSubscriber = await Subscriber.create({email});
+
+     // Prepare email template data
+     const templateData = {
+      email : req.body.email
+    };
 
 
-module.exports = { createSubcribers, unsubscribe, sendMailToSubscribers };
+ await mailFreeAccess({  email: templateData.email });
+
+ 
+  return res.status(201).json({message: 'Subscription successful', newSubscriber });
+});
+
+
+
+module.exports = { createSubcribers, unsubscribe, sendMailToSubscribers, sendEmailToUser };

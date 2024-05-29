@@ -46,6 +46,10 @@ const UserSchema = mongoose.Schema({
       ref: "Course",
     },
   ],
+  isNewUser: {
+    type: Boolean,
+    default: true,
+  },
   resetPasswordToken: String,
   resetPasswordExpire: Date,
 }, {

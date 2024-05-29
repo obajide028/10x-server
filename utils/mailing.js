@@ -6,6 +6,8 @@ const path = require('path');
 // import view template from directory
 const WelcomeEmailTemplate = fs.readFileSync(path.join(__dirname, "../views/welcome10x.hbs"), "utf8")
 const SubscriptionTemplate = fs.readFileSync(path.join(__dirname, "../views/subscription.hbs"), "utf8")
+const FreeAcessTemplate = fs.readFileSync(path.join(__dirname, "../views/freeAccess.hbs"), "utf8")
+
 
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -61,5 +63,25 @@ const mailSubscription = async ({email}) => {
     }
 }
 
+const mailFreeAccess = async ({email}) => {
+    try {
+      const template= handlebars.compile(FreeAcessTemplate);
 
-module.exports = {welcomeMail, mailSubscription};
+      //pass email atrribute into templates
+      const emailBody = template({email});
+     
+       const info = await transporter.sendMail({
+        from: process.env.FROM_NAME,
+        to: email,
+        subject: 'Welcome',
+       html: emailBody,
+ });
+ console.log(`Email Successfully sent to ${email}`, info.messageId);
+    } catch (error) {
+        console.log(error.message);
+        throw new Error(`Error sending email: ${error.message}`)
+    }
+}
+
+
+module.exports = {welcomeMail, mailSubscription, mailFreeAccess};

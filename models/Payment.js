@@ -40,8 +40,11 @@ const paymentSchema = new mongoose.Schema({
     paymentDate: {
         type: Date,
         default: Date.now
+    },
+    used: {
+        type: Boolean,
+        default: false
     }
-  
 });
 
 // Static method to get total amount

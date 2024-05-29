@@ -27,7 +27,7 @@ const register = asyncHandler(async (req, res, next) => {
   }
 
     // create user
-    const user = await User.create({ fullname, email, password });
+    const user = await User.create({ fullname, email, password, isNewUser: true  });
 
     //Initiate payment with paystack
     const paymentData = await initializePayment(req);
