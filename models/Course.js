@@ -28,7 +28,8 @@ const courseSchema = new mongoose.Schema(
     thumbnail: {
       type: String,
       required: [true, "Add an image"],
-      default: "no-photo.jpg",
+      default:
+        "https://res.cloudinary.com/dgde8cwjk/image/upload/v1717083432/default-avatar-profile-icon-vector-18942381_uvoj7c.jpg",
     },
     status: {
       type: String,
