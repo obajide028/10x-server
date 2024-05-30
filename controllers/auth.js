@@ -83,8 +83,13 @@ const login = asyncHandler(async (req, res, next) => {
   if (!user) {
     return res
       .status(401)
-      .json({ success: false, message: "Email does not exist" });
+      .json({ success: false, message: "User does not exist" });
   }
+
+    // Check if it's a new user
+    if (user.isNewUser) {
+      return res.status(403).json({ success: false, message: "You haven't purchased a course" });
+    }
 
   // check if password matches
   const isMatch = await user.matchPassword(password);
