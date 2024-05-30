@@ -49,7 +49,9 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
 
 // Get all courses
 exports.getCourses = asyncHandler(async (req, res, next) => {
-  const courses = await CourseModel.find({ status: "published" });
+  const courses = await CourseModel.find({ status: "published" }).sort({
+    createdAt: -1,
+  });
   res.status(200).json({ success: true, data: courses });
 });
 
