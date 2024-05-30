@@ -1,4 +1,5 @@
 const { CourseModel } = require("../models/Course");
+const Payment = require("../models/Payment");
 const asyncHandler = require("../middleware/async");
 const Joi = require("joi");
 const uploadImage = require("../utils/uploadImage");
@@ -162,4 +163,41 @@ exports.searchCourses = asyncHandler(async (req, res, next) => {
   });
 
   res.status(200).json({ success: true, data: courses });
+});
+
+exports.getTopSellingCourses = asyncHandler(async (req, res, next) => {
+  try {
+    const bestSellingCourses = await Payment.aggregate([
+      { $match: { status: "success" } }, // Match only successful payments
+      { $group: { _id: "$courseId", count: { $sum: 1 } } }, // Group by courseId and count payments
+      { $sort: { count: -1 } }, // Sort by count in descending order
+      { $limit: 4 }, // Limit to top 4 courses
+      {
+        $lookup: {
+          from: "courses",
+          localField: "_id",
+          foreignField: "_id",
+          as: "course",
+        },
+      },
+      { $unwind: "$course" }, // Unwind the course array
+      {
+        $project: {
+          "course.title": 1,
+          "course.description": 1,
+          "course.price": 1,
+          "course.category": 1,
+          "course.thumbnail": 1,
+          count: 1,
+        },
+      }, // Project only necessary fields
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: bestSellingCourses,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
