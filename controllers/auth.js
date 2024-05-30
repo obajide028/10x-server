@@ -7,6 +7,8 @@ const { initializePayment } = require("../services/paystack");
 const uploadImage = require("../utils/uploadImage");
 const Payment = require("../models/Payment");
 const crypto = require("crypto");
+const { forgotPassword: sendForgotPasswordEmail } = require('../utils/mailing');
+const { token } = require("morgan");
 
 //@desc     Register user
 //@route    POST /api/v1/auth/register
@@ -14,20 +16,27 @@ const crypto = require("crypto");
 const register = asyncHandler(async (req, res, next) => {
   const { email, password, fullname, amount, courseId } = req.body;
   try {
-
     if (!email || !password || !fullname) {
-      return res.status(404).json({success: false, message:"Please Input all fields"});
-     }
+      return res
+        .status(404)
+        .json({ success: false, message: "Please Input all fields" });
+    }
 
-     
-     // Check for user
-   const Exisitinguser = await User.findOne({ email }).select("+password");
-      if (Exisitinguser) {
-      return res.status(401).json({success: false, message:"User Exists Already"});
-  }
+    // Check for user
+    const Exisitinguser = await User.findOne({ email }).select("+password");
+    if (Exisitinguser) {
+      return res
+        .status(401)
+        .json({ success: false, message: "User Exists Already" });
+    }
 
     // create user
-    const user = await User.create({ fullname, email, password, isNewUser: true  });
+    const user = await User.create({
+      fullname,
+      email,
+      password,
+      isNewUser: true,
+    });
 
     //Initiate payment with paystack
     const paymentData = await initializePayment(req);
@@ -64,20 +73,26 @@ const login = asyncHandler(async (req, res, next) => {
 
   // validate email & password
   if (!email || !password) {
-   return res.status(404).json({success: false, message:"Please input all field"});
+    return res
+      .status(404)
+      .json({ success: false, message: "Please input all field" });
   }
 
   // Check for user
   const user = await User.findOne({ email }).select("+password");
   if (!user) {
-    return res.status(401).json({success: false, message:"Email does not exist"});
+    return res
+      .status(401)
+      .json({ success: false, message: "Email does not exist" });
   }
 
   // check if password matches
   const isMatch = await user.matchPassword(password);
 
   if (!isMatch) {
-   return res.status(404).json({success: false, message:"Invalid Password"});
+    return res
+      .status(404)
+      .json({ success: false, message: "Invalid Password" });
   }
 
   sendTokenResponse(user, 200, res);
@@ -102,7 +117,9 @@ const getMe = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.user.id);
 
   if (!user) {
-    return res.status(404).json({success: false, message: "User does not exist"});
+    return res
+      .status(404)
+      .json({ success: false, message: "User does not exist" });
   }
   res.status(200).json({ success: true, data: user });
 });
@@ -123,14 +140,10 @@ const updateDetails = asyncHandler(async (req, res, next) => {
     fieldsToUpdate.photo = photoUrl;
   }
 
-  const user = await User.findByIdAndUpdate(
-    req.user.id,
-    fieldsToUpdate,
-    {
-      new: true,
-      runValidators: true,
-    }
-  );
+  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
+    new: true,
+    runValidators: true,
+  });
 
   res.status(200).json({ success: true, data: user });
 });
@@ -142,7 +155,9 @@ const updatePassword = asyncHandler(async (req, res, next) => {
 
   // Check current password
   if (!(await user.matchPassword(req.body.currentPassword))) {
-    return res.status(401).json({success: false, message: "Password is incorrect"});
+    return res
+      .status(401)
+      .json({ success: false, message: "Password is incorrect" });
   }
   user.password = req.body.newPassword;
   await user.save();
@@ -154,41 +169,37 @@ const updatePassword = asyncHandler(async (req, res, next) => {
 //@route    POST /api/v1/auth/forgotpassword
 //@access   Private
 const forgotPassword = asyncHandler(async (req, res, next) => {
-  const user = await User.findOne({ email: req.body.email });
-
-  if (!user) {
-   return res.status(404).json({success: false, message: "There is no user with that email"});
-  }
-
-  // Get reset token
-  const resetToken = user.getResetPasswordToken();
-
-  await user.save({ validateBeforeSave: false });
-
-  console.log(resetToken);
-
-  // Create reset url
-  const resetUrl = `${req.protocol}://${req.get(
-    "host"
-  )}/api/v1/auth/resetpassword/${resetToken}`;
-
-  const message = `You are receiving this email because you (or someone else) has requested
-      the reset of a password. Please make a request to: \n\n ${resetUrl}`;
-
   try {
-    await sendEmail({
-      email: user.email,
-      subject: "Password reset token",
-      message,
-    });
-    res.status(200).json({ success: true, data: "Email sent" });
-  } catch (error) {
-    console.log(error);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+    const user = await User.findOne({ email: req.body.email });
+
+    if (!user) {
+      console.log("No user found with that email:", req.body.email);
+      return res
+        .status(404)
+        .json({ success: false, message: "There is no user with that email" });
+    }
+
+    // Get reset token
+    const resetToken = user.getResetPasswordToken();
+    console.log(`Reset token generated for user ${user.email}: ${resetToken}`);
 
     await user.save({ validateBeforeSave: false });
-    
+
+    // Create reset URL
+    const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/resetpassword/${resetToken}`;
+    console.log(`Reset URL: ${resetUrl}`);
+
+    // Send email
+    await sendForgotPasswordEmail({
+      email: user.email,
+      fullname: user.fullname,
+      resetUrl,
+    });
+    console.log("Email sent successfully to:", user.email, user.fullname);
+
+    res.status(200).json({ success: true, data: "Email sent", token: resetUrl });
+  } catch (error) {
+    console.error("Error in forgotPassword handler:", error);
     return next(new ErrorResponse("Email could not be sent", 500));
   }
 });
@@ -209,7 +220,7 @@ const resetPassword = asyncHandler(async (req, res, next) => {
   });
 
   if (!user) {
-    return res.status(400). json({success: false, message: "Invalid token"});
+    return res.status(400).json({ success: false, message: "Invalid token" });
   }
 
   // Set new password
