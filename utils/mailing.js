@@ -94,12 +94,12 @@ const mailFreeAccess = async ({ email }) => {
   }
 };
 
-const forgotPassword = async ({ fullname, email, resetUrl }) => {
+const forgotPassword = async ({ fullname, email, newPassword }) => {
   try {
     const template = handlebars.compile(resetPassword);
 
     //pass email atrribute into templates
-    const emailBody = template({ fullname, email, resetUrl });
+    const emailBody = template({ fullname, email, newPassword });
 
     const info = await transporter.sendMail({
       from: process.env.FROM_NAME,

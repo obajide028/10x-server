@@ -7,7 +7,7 @@ const { initializePayment } = require("../services/paystack");
 const uploadImage = require("../utils/uploadImage");
 const Payment = require("../models/Payment");
 const crypto = require("crypto");
-const { forgotPassword: sendForgotPasswordEmail } = require('../utils/mailing');
+const { forgotPassword: sendForgotPasswordEmail } = require("../utils/mailing");
 const { token } = require("morgan");
 
 //@desc     Register user
@@ -168,6 +168,19 @@ const updatePassword = asyncHandler(async (req, res, next) => {
 //@desc     Forgot password
 //@route    POST /api/v1/auth/forgotpassword
 //@access   Private
+// Function to generate a random password
+const generateRandomPassword = (length = 10) => {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let newPassword = "";
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    newPassword += characters[randomIndex];
+  }
+  return newPassword;
+};
+
+// Forgot password
 const forgotPassword = asyncHandler(async (req, res, next) => {
   try {
     const user = await User.findOne({ email: req.body.email });
@@ -179,25 +192,22 @@ const forgotPassword = asyncHandler(async (req, res, next) => {
         .json({ success: false, message: "There is no user with that email" });
     }
 
-    // Get reset token
-    const resetToken = user.getResetPasswordToken();
-    console.log(`Reset token generated for user ${user.email}: ${resetToken}`);
+    // Generate a new password
+    const newPassword = generateRandomPassword(); // Generate a random password
 
-    await user.save({ validateBeforeSave: false });
+    // Update user's password and lastPasswordReset date
+    user.password = newPassword;
+    user.lastPasswordReset = new Date(); // Set the last password reset date to now
+    await user.save();
 
-    // Create reset URL
-    const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/resetpassword/${resetToken}`;
-    console.log(`Reset URL: ${resetUrl}`);
-
-    // Send email
+    // Send email with the new password
     await sendForgotPasswordEmail({
       email: user.email,
       fullname: user.fullname,
-      resetUrl,
+      newPassword,
     });
-    console.log("Email sent successfully to:", user.email, user.fullname);
 
-    res.status(200).json({ success: true, data: "Email sent", token: resetUrl });
+    res.status(200).json({ success: true, data: "Email sent", newPassword });
   } catch (error) {
     console.error("Error in forgotPassword handler:", error);
     return next(new ErrorResponse("Email could not be sent", 500));
